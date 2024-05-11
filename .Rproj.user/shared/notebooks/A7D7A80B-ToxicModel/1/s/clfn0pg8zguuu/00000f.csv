@@ -1,0 +1,6 @@
+"0","# Create dfm with tf-idf weighting directly from tokens"
+"0","#dfm_tfidf <- dfm(datatokens, tfidf = TRUE)"
+"0","dfm_tfidf <- dfm(combined_data$comment, weighting = ""tfidf"")"
+"2","Error in dfm(combined_data$comment, weighting = ""tfidf"") : 
+  could not find function ""dfm""
+"

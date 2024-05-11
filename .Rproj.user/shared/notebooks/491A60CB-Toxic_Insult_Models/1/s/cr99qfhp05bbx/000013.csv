@@ -1,0 +1,11 @@
+"0",""
+"0","# Tokenize the text column using the tokenizers package"
+"0","tokenized_text2 <- tokenize_words(data2$comment)"
+"0",""
+"0","# Stem each token using the SnowballC package"
+"0","stemmed_tokens2 <- lapply(tokenized_text2, function(tokens) {"
+"0","  wordStem(tokens, language = ""en"")  # ""en"" indicates English language"
+"0","})"
+"2","Error in wordStem(tokens, language = ""en"") : 
+  could not find function ""wordStem""
+"

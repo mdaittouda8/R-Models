@@ -1,0 +1,6 @@
+"0","```r
+# Naive Bayes
+toxic_model_nb <- train(toxic ~ ., data = feat_tfidf, method = \"nb\", trControl = trainControl(method = \"cv\"))
+insult_model_nb <- train(insult ~ ., data = feat_tfidf, method = \"nb\", trControl = trainControl(method = \"cv\"))
+
+```"

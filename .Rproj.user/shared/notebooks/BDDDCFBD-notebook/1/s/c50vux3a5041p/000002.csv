@@ -1,0 +1,5 @@
+"0","```r
+# Logistic Regression
+toxic_model <- train(toxic ~ ., data = feat_tfidf, method = \"glmnet\", trControl = trainControl(method = \"cv\"))
+insult_model <- train(insult ~ ., data = feat_tfidf, method = \"glmnet\", trControl = trainControl(method = \"cv\"))
+```"

@@ -1,0 +1,333 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+### 1- Data Set Loading :
+```{r}
+#load the data set
+dataset <- read.csv("MachineLearningChallengeData.csv")
+
+# Create a new column 'commentlength' with the number of letters (excluding spaces) in each comment
+dataset$commentlength <- nchar(gsub("\\s", "", dataset$comment))
+
+```
+
+
+### 2- Data Preprocessing and Cleaning:
+```{r}
+#remove unnecessary columns
+dataset <- dataset[, c(2, 3, 5)]
+
+#change columns names
+names(dataset) <- c("comment", "toxic", "commentLength")
+
+#distribution of toxic and non-toxic comments
+print(table(dataset$toxic))
+
+# tempray data for testing
+data <- dataset
+
+```
+
+```{r}
+# Remove URLs starting with "https://"
+data$comment <- gsub("https?://[^\\s]+", "", data$comment)
+
+# Remove URLs starting with "http://"
+data$comment <- gsub("http?://[^\\s]+", "", data$comment)
+
+# Remove punctuation marks
+data$comment <- gsub("[[:punct:]]", "", data$comment)
+
+# Remove extra white spaces (reducing multiple consecutive spaces to a single space)
+data$comment <- gsub("\\s{2,}", " ", data$comment)
+
+# Convert all characters in the 'comment' column to lowercase
+data$comment <- tolower(data$comment) 
+
+# Remove names of days
+data$comment <- gsub("\\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\b", "", data$comment, ignore.case = TRUE)
+
+# Remove names of months
+data$comment <- gsub("\\b(january|february|march|april|may|june|july|august|september|october|november|december)\\b", "", data$comment, ignore.case = TRUE)
+
+```
+
+
+```{r}
+# Load the tm package
+library("tm")
+
+# Remove English stopwords
+data$comment <- removeWords(data$comment, stopwords("en"))
+```
+
+```{r}
+# Remove extra whitespaces (reducing multiple consecutive spaces to a single space)
+data$comment <- gsub("\\s{2,}", " ", data$comment)
+
+# Remove digits (numeric characters)
+data$comment <- gsub("[0-9]", "", data$comment)
+```
+
+```{r}
+#remove words with only one letter
+data$comment <- gsub("\\b\\w{1}\\b", "", data$comment)
+
+```
+
+```{r}
+#install.packages("SnowballC")
+library(SnowballC)
+library(tokenizers)
+
+# Tokenize the text column using the tokenizers package
+tokenized_text <- tokenize_words(data$comment)
+
+# Stem each token using the SnowballC package
+stemmed_tokens <- lapply(tokenized_text, function(tokens) {
+  wordStem(tokens, language = "en")  # "en" indicates English language
+})
+
+# Combine stemmed tokens back into text
+stemmed_text <- sapply(stemmed_tokens, paste, collapse = " ")
+
+# Replace the original text column with the stemmed text
+data$comment <- stemmed_text
+
+```
+
+
+
+```{r}
+# Tokenize
+#library(quanteda)
+
+#datatokens <- tokens(data$comment, what = "word", 
+                  #     remove_numbers = TRUE, remove_punct = TRUE,
+                 #      remove_symbols = TRUE)
+#datatokens[[1]]
+#data.tokens[[307]]
+```
+```{r}
+# Perform stemming on the tokens.
+#datatokens <- tokens_wordstem(datatokens, language = "english")
+#datatokens[[1]]
+#data.tokens[[307]]
+```
+
+### 3- Feature engineering:
+## Comment Length:
+```{r}
+# Calculate average comment length for toxic and non-toxic comments
+avg_length_toxic <- mean(data$commentLength[data$toxic == 1])
+avg_length_non_toxic <- mean(data$commentLength[data$toxic == 0])
+
+# Print the average lengths
+cat("Average comment length for toxic comments:", avg_length_toxic, "\n")
+cat("Average comment length for non-toxic comments:", avg_length_non_toxic, "\n")
+```
+```{r}
+# Load required library
+library(ggplot2)
+
+# Subset data for toxic and non-toxic comments
+toxic_comments <- data$commentLength[data$toxic == 1]
+non_toxic_comments <- data$commentLength[data$toxic == 0]
+
+# Create histograms 
+ggplot() +
+  geom_histogram(aes(x = non_toxic_comments), fill = "blue", alpha = 0.5, binwidth = 10) +
+  geom_histogram(aes(x = toxic_comments), fill = "red", alpha = 0.5, binwidth = 10) +
+  labs(x = "Comment Length", y = "Frequency", title = "Distribution of Comment Lengths for Toxic and Non-Toxic Comments") +
+  scale_x_continuous(breaks = seq(0, 1000, by = 100), limits = c(0, 800)) +  # Adjust x-axis limits
+  scale_y_continuous(breaks = seq(0, 10000, by = 1000)) +
+  theme_minimal()
+
+
+
+```
+
+
+
+
+
+## Comment Sentiment:
+```{r}
+# Load the syuzhet library
+library(syuzhet)
+
+# Get NRC sentiment scores
+sentiment <- get_sentiment(data$comment, method = "nrc")
+
+# Convert the sentiment scores to a dataframe
+sentiment_scores <- as.data.frame(sentiment)
+```
+
+```{r}
+# combined data to setiment_scores
+combined_data <- cbind(data, sentiment_scores)
+
+# explore relationship between sentiment and comment toxicity
+# Calculate average comment length for toxic and non-toxic comments
+avg_sentiment_toxic <- mean(combined_data$sentiment[combined_data$toxic == 1])
+avg_sentiment_non_toxic <- mean(combined_data$sentiment[combined_data$toxic == 0])
+
+# Print the average lengths
+cat("Average comment sentiment for toxic comments:", avg_sentiment_toxic, "\n")
+cat("Average comment sentiment for non-toxic comments:", avg_sentiment_non_toxic, "\n")
+```
+
+## TF-IDF Matrix:
+```{r}
+# Create dfm with tf-idf weighting directly from tokens
+#dfm_tfidf <- dfm(datatokens, tfidf = TRUE)
+dfm_tfidf <- dfm(combined_data$comment, weighting = "tfidf")
+
+
+# Convert dfm to a data frame
+tfidf_as_matrix <- as.matrix(dfm_tfidf)
+
+#get dimensions of matrix
+dim(tfidf_as_matrix)
+
+#View first 10 rows and columns of matrix
+#View(tfidf_as_matrix[1:10, 1:10])
+
+
+```
+
+
+```{r}
+# add the features generated to the matrix
+tfidf_as_matrix <- cbind(combined_data$commentLength, combined_data$toxic, sentiment_scores$sentiment, tfidf_as_matrix)
+
+#view 
+#View(tfidf_as_matrix[1:10, 1:10])
+```
+
+```{r}
+#change columns names
+colnames(tfidf_as_matrix)[1:3] <- c("commentLength", "toxic", "sentiment")
+
+#view 
+View(tfidf_as_matrix[1:10, 1:10])
+```
+
+
+### 4-Model Building:
+##Split data to train and test sets:
+
+```{r}
+# Load required libraries
+library(caret)
+
+
+# Split the data into training and testing sets
+set.seed(123)
+trainIndex <- createDataPartition(combined_data$toxic, p = 0.8, list = FALSE)
+trainData <- tfidf_as_matrix[trainIndex, ]
+testData <- tfidf_as_matrix[-trainIndex, ]
+```
+
+
+## logistic Regression:
+```{r}
+# Define the training control
+#ctrl <- trainControl(method = "cv", number = 5)  # 5-fold cross-validation
+
+# Train logistic regression model using train function
+nb_model <- train(toxic ~ ., data = data.frame(trainData), method = "nb")
+                     
+```
+
+## Naive Bayes:
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

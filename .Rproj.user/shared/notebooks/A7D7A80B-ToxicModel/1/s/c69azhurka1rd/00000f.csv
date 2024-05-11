@@ -1,0 +1,5 @@
+"0","# Remove extra whitespaces (reducing multiple consecutive spaces to a single space)"
+"0","data$comment <- gsub(""\\s{2,}"", "" "", data$comment)"
+"0",""
+"0","# Remove digits (numeric characters)"
+"0","data$comment <- gsub(""[0-9]"", """", data$comment)"

@@ -1,0 +1,17 @@
+"0","```r
+# Text preprocessing
+# Convert to lowercase
+data$comment <- tolower(data$comment) 
+# Remove special characters
+data$comment <- gsub(\"[^a-z0-9\\s]\", \"\", data$comment)
+# Remove URLs
+data$comment <- gsub(\"https?://[^\\s]+\", \"\", data$comment)
+data$comment <- gsub(\"http?://[^\\s]+\", \"\", data$comment)
+# Remove punctuation
+data$comment <- gsub(\"[[:punct:]]\", \"\", data$comment)
+# Remove digits
+data$comment<- gsub(\"[0-9]\", \"\", data$comment)
+# Remove extra whitespaces
+data$comment <- gsub(\"\\s{2,}\", \"\", data$comment)
+
+```"

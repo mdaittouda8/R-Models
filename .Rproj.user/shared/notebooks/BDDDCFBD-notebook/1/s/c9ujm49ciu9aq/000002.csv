@@ -1,0 +1,7 @@
+"0","```r
+# Split the data into training and testing sets
+set.seed(123)
+trainIndex <- createDataPartition(data$toxic, p = 0.8, list = FALSE)
+trainData <- data[trainIndex, ]
+testData <- data[-trainIndex, ]
+```"

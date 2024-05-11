@@ -1,0 +1,635 @@
+---
+title: "R Notebook"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+#### Toxic Classifier: ---------------------------------------------------------
+
+### 1- Data Set Loading and Packages :
+```{r}
+# Load required libraries
+library(ggplot2)
+library(tm)
+library(SnowballC)
+library(caret)
+library(tokenizers)
+
+#load the data set
+dataset <- read.csv("MachineLearningChallengeData.csv")
+
+```
+
+### 2- Data Preprocessing and Cleaning:
+```{r}
+# Create a new column 'commentlength' with the number of letters (excluding spaces) in each comment
+dataset$commentlength <- nchar(gsub("\\s", "", dataset$comment))
+
+#remove unnecessary columns
+dataset <- dataset[, c(2, 3, 5)]
+
+#change columns names
+names(dataset) <- c("comment", "toxic", "commentLength")
+
+#distribution of toxic and non-toxic comments
+print(table(dataset$toxic))
+
+# tempray data for testing
+data <- dataset
+```
+
+
+```{r}
+# Remove URLs starting with "https://"
+data$comment <- gsub("https?://[^\\s]+", "", data$comment)
+
+# Remove URLs starting with "http://"
+data$comment <- gsub("http?://[^\\s]+", "", data$comment)
+
+# Remove punctuation marks
+data$comment <- gsub("[[:punct:]]", "", data$comment)
+
+# Remove extra white spaces (reducing multiple consecutive spaces to a single space)
+data$comment <- gsub("\\s{2,}", " ", data$comment)
+
+# Convert all characters in the 'comment' column to lowercase
+data$comment <- tolower(data$comment) 
+
+# Remove names of days
+data$comment <- gsub("\\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\b", "", data$comment, ignore.case = TRUE)
+
+# Remove names of months
+data$comment <- gsub("\\b(january|february|march|april|may|june|july|august|september|october|november|december)\\b", "", data$comment, ignore.case = TRUE)
+
+```
+
+
+```{r}
+# Remove English stopwords
+data$comment <- removeWords(data$comment, stopwords("en"))
+
+# Remove extra whitespaces (reducing multiple consecutive spaces to a single space)
+data$comment <- gsub("\\s{2,}", " ", data$comment)
+
+# Remove digits (numeric characters)
+data$comment <- gsub("[0-9]", "", data$comment)
+
+#remove words with only one letter
+data$comment <- gsub("\\b\\w{1}\\b", "", data$comment)
+```
+
+
+```{r}
+# Tokenize the text column using the tokenizers package
+tokenized_text <- tokenize_words(data$comment)
+
+# Stem each token using the SnowballC package
+stemmed_tokens <- lapply(tokenized_text, function(tokens) {
+  wordStem(tokens, language = "en")  # "en" indicates English language
+})
+
+# Combine stemmed tokens back into text
+stemmed_text <- sapply(stemmed_tokens, paste, collapse = " ")
+
+# Replace the original text column with the stemmed text
+data$comment <- stemmed_text
+```
+
+
+### 3- Feature engineering:
+## Comment Length:
+```{r}
+# Calculate average comment length for toxic and non-toxic comments
+avg_length_toxic <- mean(data$commentLength[data$toxic == 1])
+avg_length_non_toxic <- mean(data$commentLength[data$toxic == 0])
+
+# Print the average lengths
+cat("Average comment length for toxic comments:", avg_length_toxic, "\n")
+cat("Average comment length for non-toxic comments:", avg_length_non_toxic, "\n")
+```
+
+```{r}
+# Subset data for toxic and non-toxic comments
+toxic_comments <- data$commentLength[data$toxic == 1]
+non_toxic_comments <- data$commentLength[data$toxic == 0]
+
+# Create histograms 
+ggplot() +
+  geom_histogram(aes(x = non_toxic_comments), fill = "blue", alpha = 0.5, binwidth = 10) +
+  geom_histogram(aes(x = toxic_comments), fill = "red", alpha = 0.5, binwidth = 10) +
+  labs(x = "Comment Length", y = "Frequency", title = "Distribution of Comment Lengths for Toxic and Non-Toxic Comments") +
+  scale_x_continuous(breaks = seq(0, 1000, by = 100), limits = c(0, 800)) +  # Adjust x-axis limits
+  scale_y_continuous(breaks = seq(0, 10000, by = 1000)) +
+  theme_minimal()
+```
+
+
+## Comment Sentiment:
+```{r}
+# Load the syuzhet library
+library(syuzhet)
+
+# Get NRC sentiment scores
+sentiment <- get_sentiment(data$comment, method = "nrc")
+
+# Convert the sentiment scores to a dataframe
+sentiment_scores <- as.data.frame(sentiment)
+```
+
+```{r}
+# combined data to setiment_scores
+data <- cbind(data, sentiment_scores)
+
+# explore relationship between sentiment and comment toxicity
+# Calculate average comment length for toxic and non-toxic comments
+avg_sentiment_toxic <- mean(data$sentiment[data$toxic == 1])
+avg_sentiment_non_toxic <- mean(data$sentiment[data$toxic == 0])
+
+# Print the average lengths
+cat("Average comment sentiment for toxic comments:", avg_sentiment_toxic, "\n")
+cat("Average comment sentiment for non-toxic comments:", avg_sentiment_non_toxic, "\n")
+```
+
+
+## TF-IDF Matrix:
+```{r}
+# Create a document-term matrix (DTM) using TF-IDF
+tfidf_vectorizer <- function(data) {
+  corpus <- Corpus(VectorSource(data))
+  dtm <- DocumentTermMatrix(corpus)
+  dtm_tfidf <- weightTfIdf(dtm)
+  
+  # Reduce the size of the TF-IDF matrix by keeping only the top 1000 features
+  dtm_tfidf_reduced <- removeSparseTerms(dtm_tfidf, sparse = 0.999)
+  
+  return(as.matrix(dtm_tfidf_reduced))
+}
+```
+
+```{r}
+# Apply TF-IDF vectorizer on data
+tfidf_data <- tfidf_vectorizer(data$comment)
+
+# Define labels
+target <- data$toxic
+
+# Combine label and TF-IDF matrix into a data frame
+combined_data <- data.frame(label = target, tfidf_data)
+```
+
+
+### 4-Model Building:
+
+```{r}
+# Split the data into training and testing sets
+set.seed(42)  # for reproducibility
+train_index <- createDataPartition(combined_data$label, p = 0.8, list = FALSE)
+train_data <- combined_data[train_index, ]
+test_data <- combined_data[-train_index, ]
+```
+
+## Naive Bayes:
+```{r}
+#Train Naive Bayes model
+library(e1071)
+naive_bayes_model <- naiveBayes(as.factor(label) ~ ., data = train_data)
+
+# Make predictions
+naive_bayes_predictions <- predict(naive_bayes_model, newdata = test_data)
+
+# Calculate confusion matrix
+naive_bayes_confusion_matrix <- confusionMatrix(naive_bayes_predictions, factor(test_data$label, levels = c(0, 1)))
+
+# Print confusion matrix
+print(naive_bayes_confusion_matrix)
+
+# Extract metrics for Naive Bayes model
+naive_bayes_precision <- naive_bayes_confusion_matrix$byClass["Pos Pred Value"]
+naive_bayes_recall <- naive_bayes_confusion_matrix$byClass["Sensitivity"]
+naive_bayes_f1_score <- naive_bayes_confusion_matrix$byClass["F1"]
+naive_bayes_accuracy <- naive_bayes_confusion_matrix$overall["Accuracy"]
+naive_bayes_specificity <- naive_bayes_confusion_matrix$byClass["Specificity"]
+naive_bayes_balanced_accuracy <- naive_bayes_confusion_matrix$byClass["Balanced Accuracy"]
+naive_bayes_kappa <- naive_bayes_confusion_matrix$overall["Kappa"]
+
+# Print metrics for Naive Bayes model
+cat("Naive Bayes Metrics:\n")
+cat("Precision:", naive_bayes_precision, "\n")
+cat("Recall:", naive_bayes_recall, "\n")
+cat("F1 Score:", naive_bayes_f1_score, "\n")
+cat("Accuracy:", naive_bayes_accuracy, "\n")
+cat("Specificity:", naive_bayes_specificity, "\n")
+cat("Balanced Accuracy:", naive_bayes_balanced_accuracy, "\n")
+cat("Kappa:", naive_bayes_kappa, "\n")
+```
+
+
+## SVM:
+```{r}
+# Train SVM model
+svm_model <- svm(as.factor(label) ~ ., data = train_data)
+
+# Make predictions
+svm_predictions <- predict(svm_model, newdata = test_data)
+
+# Calculate confusion matrix
+svm_confusion_matrix <- confusionMatrix(svm_predictions, factor(test_data$label, levels = c(0, 1)))
+
+# Print confusion matrix
+print(svm_confusion_matrix)
+
+# Extract metrics for SVM model
+svm_precision <- svm_confusion_matrix$byClass["Pos Pred Value"]
+svm_recall <- svm_confusion_matrix$byClass["Sensitivity"]
+svm_f1_score <- svm_confusion_matrix$byClass["F1"]
+svm_accuracy <- svm_confusion_matrix$overall["Accuracy"]
+svm_specificity <- svm_confusion_matrix$byClass["Specificity"]
+svm_balanced_accuracy <- svm_confusion_matrix$byClass["Balanced Accuracy"]
+svm_kappa <- svm_confusion_matrix$overall["Kappa"]
+
+# Print metrics for SVM model
+cat("\nSVM Metrics:\n")
+cat("Precision:", svm_precision, "\n")
+cat("Recall:", svm_recall, "\n")
+cat("F1 Score:", svm_f1_score, "\n")
+cat("Accuracy:", svm_accuracy, "\n")
+cat("Specificity:", svm_specificity, "\n")
+cat("Balanced Accuracy:", svm_balanced_accuracy, "\n")
+cat("Kappa:", svm_kappa, "\n")
+```
+
+
+
+## Logistic regression:
+```{r}
+# Train logistic regression model
+model <- glm(label ~ ., data = train_data, family = binomial(link = "logit"))
+
+# Make predictions
+predictions <- ifelse(predict(model, newdata = test_data, type = "response") > 0.5, 1, 0)
+
+# Print list of predictions
+print(predictions)
+
+
+# Evaluate model performance
+confusion_matrix <- confusionMatrix(factor(predictions, levels = c(0, 1)), factor(test_data$label, levels = c(0, 1)))
+
+# Print confusion matrix
+print(confusion_matrix)
+
+
+# Extract precision, recall, and other metrics
+precision <- confusion_matrix$byClass["Pos Pred Value"]
+recall <- confusion_matrix$byClass["Sensitivity"]
+f1_score <- confusion_matrix$byClass["F1"]
+accuracy <- confusion_matrix$overall["Accuracy"]
+
+# Additional metrics
+specificity <- confusion_matrix$byClass["Specificity"]
+balanced_accuracy <- confusion_matrix$byClass["Balanced Accuracy"]
+kappa <- confusion_matrix$overall["Kappa"]
+
+# Print metrics
+cat("Precision:", precision, "\n")
+cat("Recall:", recall, "\n")
+cat("F1 Score:", f1_score, "\n")
+cat("Accuracy:", accuracy, "\n")
+cat("Specificity:", specificity, "\n")
+cat("Balanced Accuracy:", balanced_accuracy, "\n")
+cat("Kappa:", kappa, "\n")
+```
+
+
+
+
+
+
+### Insult Classifier:----------------------------------------------------------
+### 1- Data Set Loading:
+```{r}
+#load the data set
+dataset2 <- read.csv("MachineLearningChallengeData.csv")
+
+```
+
+### 2- Data Preprocessing and Cleaning:
+```{r}
+# Create a new column 'commentlength' with the number of letters (excluding spaces) in each comment
+dataset2$commentlength <- nchar(gsub("\\s", "", dataset$comment))
+
+#remove unnecessary columns
+dataset2 <- dataset[, c(2, 4, 5)]
+
+#change columns names
+names(dataset2) <- c("comment", "insult", "commentLength")
+
+#distribution of toxic and non-toxic comments
+print(table(dataset$insult))
+
+# temporary data for testing
+data2 <- dataset2
+```
+
+
+```{r}
+# Find missing values
+print(which(is.na(data2$comment)))
+
+print(which(is.na(data2$insult)))
+
+#there is no missing valuesin both columns
+```
+
+```{r}
+# Remove URLs starting with "https://"
+data2$comment <- gsub("https?://[^\\s]+", "", data2$comment)
+
+# Remove URLs starting with "http://"
+data2$comment <- gsub("http?://[^\\s]+", "", data2$comment)
+
+# Remove punctuation marks
+data2$comment <- gsub("[[:punct:]]", "", data2$comment)
+
+# Remove extra white spaces (reducing multiple consecutive spaces to a single space)
+data2$comment <- gsub("\\s{2,}", " ", data2$comment)
+
+# Convert all characters in the 'comment' column to lowercase
+data2$comment <- tolower(data2$comment) 
+
+# Remove names of days
+data2$comment <- gsub("\\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\b", "", data2$comment, ignore.case = TRUE)
+
+# Remove names of months
+data2$comment <- gsub("\\b(january|february|march|april|may|june|july|august|september|october|november|december)\\b", "", data2$comment, ignore.case = TRUE)
+
+```
+
+```{r}
+# Remove English stopwords
+data2$comment <- removeWords(data2$comment, stopwords("en"))
+
+# Remove extra whitespaces (reducing multiple consecutive spaces to a single space)
+data2$comment <- gsub("\\s{2,}", " ", data2$comment)
+
+# Remove digits (numeric characters)
+data2$comment <- gsub("[0-9]", "", data2$comment)
+
+#remove words with only one letter
+data2$comment <- gsub("\\b\\w{1}\\b", "", data2$comment)
+```
+
+
+```{r}
+# Tokenize the text column using the tokenizers package
+tokenized_text <- tokenize_words(data2$comment)
+
+# Stem each token using the SnowballC package
+stemmed_tokens <- lapply(tokenized_text, function(tokens) {
+  wordStem(tokens, language = "en")  # "en" indicates English language
+})
+
+# Combine stemmed tokens back into text
+stemmed_text <- sapply(stemmed_tokens, paste, collapse = " ")
+
+# Replace the original text column with the stemmed text
+data2$comment <- stemmed_text
+```
+
+
+### 3- Feature engineering:
+## Comment Length:
+```{r}
+# Calculate average comment length for insult and non-insult comments
+avg_length_insult <- mean(data2$commentLength[data2$insult == 1])
+avg_length_non_insult <- mean(data2$commentLength[data2$insult == 0])
+
+# Print the average lengths
+cat("Average comment length for insult comments:", avg_length_insult, "\n")
+cat("Average comment length for non-insult comments:", avg_length_non_insult, "\n")
+
+```
+
+
+```{r}
+# Subset data for insult and non-insult comments
+insult_comments <- data2$commentLength[data$insult == 1]
+non_insult_comments <- data2$commentLength[data$insult == 0]
+
+# Create histograms 
+ggplot() +
+  geom_histogram(aes(x = non_insult_comments), fill = "yellow", alpha = 0.5, binwidth = 10) +
+  geom_histogram(aes(x = insult_comments), fill = "green", alpha = 0.5, binwidth = 10) +
+  labs(x = "Comment Length", y = "Frequency", title = "Distribution of Comment Lengths for Insult and Non-Insult Comments") +
+  scale_x_continuous(breaks = seq(0, 1000, by = 100), limits = c(0, 800)) +  # Adjust x-axis limits
+  scale_y_continuous(breaks = seq(0, 10000, by = 1000)) +
+  theme_minimal()
+```
+
+## Bag of Words:
+```{r}
+# Create a document-term matrix (Bag of Words)
+dtm2 <- DocumentTermMatrix(data2$comment)
+
+# Convert TDM to a matrix
+dtm_matrix <- as.matrix(dtm2)
+
+# Calculate term frequencies
+term_freq <- colSums(dtm_matrix)
+
+# Select the top 1200 most frequent features
+top_features <- names(sort(term_freq, decreasing = TRUE)[1:1200])
+
+# Filter DTM to include only top features
+filtered_dtm_matrix <- dtm_matrix[, top_features]
+
+# Combine label and bof matrix into a data frame
+combined_data2 <- data.frame(label = data2$insult, commentLength = data2$commentLength, filtered_dtm_matrix)
+```
+
+
+
+### 4-Model Building:
+
+```{r}
+# Split the data into training and testing sets
+set.seed(42)  # for reproducibility
+train_index2 <- createDataPartition(combined_data2$label, p = 0.8, list = FALSE)
+train_data2 <- combined_data2[train_index2, ]
+test_data2 <- combined_data2[-train_index2, ]
+
+```
+
+## Random Forest:
+
+```{r}
+# Train Random Forest model
+library(randomForest)
+random_forest_model <- randomForest(as.factor(label) ~ ., data = train_data2)
+
+# Make predictions
+random_forest_predictions <- predict(random_forest_model, newdata = test_data2)
+
+# Calculate confusion matrix
+random_forest_confusion_matrix <- confusionMatrix(random_forest_predictions, factor(test_data2$label, levels = c(0, 1)))
+
+# Print confusion matrix
+print(random_forest_confusion_matrix)
+
+# Extract metrics for Random Forest model
+random_forest_precision <- random_forest_confusion_matrix$byClass["Pos Pred Value"]
+random_forest_recall <- random_forest_confusion_matrix$byClass["Sensitivity"]
+random_forest_f1_score <- random_forest_confusion_matrix$byClass["F1"]
+random_forest_accuracy <- random_forest_confusion_matrix$overall["Accuracy"]
+random_forest_specificity <- random_forest_confusion_matrix$byClass["Specificity"]
+random_forest_balanced_accuracy <- random_forest_confusion_matrix$byClass["Balanced Accuracy"]
+random_forest_kappa <- random_forest_confusion_matrix$overall["Kappa"]
+
+# Print metrics for Random Forest model
+cat("\nRandom Forest Metrics:\n")
+cat("Precision:", random_forest_precision, "\n")
+cat("Recall:", random_forest_recall, "\n")
+cat("F1 Score:", random_forest_f1_score, "\n")
+cat("Accuracy:", random_forest_accuracy, "\n")
+cat("Specificity:", random_forest_specificity, "\n")
+cat("Balanced Accuracy:", random_forest_balanced_accuracy, "\n")
+cat("Kappa:", random_forest_kappa, "\n")
+```
+
+
+## Decision Trees:
+```{r}
+# Train Decision Trees model
+library(rpart)
+decision_trees_model <- rpart(as.factor(label) ~ ., data = train_data2)
+
+# Make predictions
+decision_trees_predictions <- predict(decision_trees_model, newdata = test_data2, type = "class")
+
+# Calculate confusion matrix
+decision_trees_confusion_matrix <- confusionMatrix(decision_trees_predictions, factor(test_data2$label, levels = c(0, 1)))
+
+# Print confusion matrix
+print(decision_trees_confusion_matrix)
+
+# Extract metrics for Decision Trees model
+decision_trees_precision <- decision_trees_confusion_matrix$byClass["Pos Pred Value"]
+decision_trees_recall <- decision_trees_confusion_matrix$byClass["Sensitivity"]
+decision_trees_f1_score <- decision_trees_confusion_matrix$byClass["F1"]
+decision_trees_accuracy <- decision_trees_confusion_matrix$overall["Accuracy"]
+decision_trees_specificity <- decision_trees_confusion_matrix$byClass["Specificity"]
+decision_trees_balanced_accuracy <- decision_trees_confusion_matrix$byClass["Balanced Accuracy"]
+decision_trees_kappa <- decision_trees_confusion_matrix$overall["Kappa"]
+
+# Print metrics for Decision Trees model
+cat("\nDecision Trees Metrics:\n")
+cat("Precision:", decision_trees_precision, "\n")
+cat("Recall:", decision_trees_recall, "\n")
+cat("F1 Score:", decision_trees_f1_score, "\n")
+cat("Accuracy:", decision_trees_accuracy, "\n")
+cat("Specificity:", decision_trees_specificity, "\n")
+cat("Balanced Accuracy:", decision_trees_balanced_accuracy, "\n")
+cat("Kappa:", decision_trees_kappa, "\n")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

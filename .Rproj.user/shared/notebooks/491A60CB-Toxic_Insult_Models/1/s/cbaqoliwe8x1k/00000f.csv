@@ -1,0 +1,8 @@
+"0","# Find missing values"
+"0","print(which(is.na(data2$comment)))"
+"1","integer(0)
+"
+"0","print(which(is.na(data2$insult)))"
+"1","integer(0)
+"
+"0","#there is no missing valuesin both columns"

@@ -1,0 +1,3 @@
+"0","#remove words with only one letter"
+"0","data$comment <- gsub(""\\b\\w{1}\\b"", """", data$comment)"
+"0",""

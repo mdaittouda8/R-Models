@@ -1,0 +1,5 @@
+"0","```r
+#Random Forest
+toxic_model_rf <- train(toxic ~ ., data = feat_tfidf, method = \"rf\", trControl = trainControl(method = \"cv\"))
+insult_model_rf <- train(insult ~ ., data = feat_tfidf, method = \"rf\", trControl = trainControl(method = \"cv\"))
+```"

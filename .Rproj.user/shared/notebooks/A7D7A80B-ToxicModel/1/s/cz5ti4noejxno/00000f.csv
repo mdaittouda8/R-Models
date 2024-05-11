@@ -1,0 +1,5 @@
+"0","# Load the tm package"
+"0","library(""tm"")"
+"0",""
+"0","# Remove English stopwords"
+"0","data$comment <- removeWords(data$comment, stopwords(""en""))"

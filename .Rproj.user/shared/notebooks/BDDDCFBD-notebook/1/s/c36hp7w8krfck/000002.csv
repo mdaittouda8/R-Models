@@ -1,0 +1,5 @@
+"0","```r
+# Load the data
+data <- read.csv(\"data_test.csv\")
+
+```"

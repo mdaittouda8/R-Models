@@ -1,0 +1,5 @@
+"0","#change columns names"
+"0","colnames(tfidf_as_matrix)[1:3] <- c(""commentLength"", ""toxic"", ""sentiment"")"
+"0",""
+"0","#view "
+"0","View(tfidf_as_matrix[1:10, 1:10])"

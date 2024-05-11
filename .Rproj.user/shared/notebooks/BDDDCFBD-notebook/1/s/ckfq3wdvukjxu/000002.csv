@@ -1,0 +1,8 @@
+"0","```r
+# Word n-grams
+feat_word <- cbind(trainData[, c(\"toxic\", \"insult\")],
+                   as.data.frame(dfm(it_train, ngram = 1:2, tri = FALSE)))
+feat_word_test <- cbind(testData[, c(\"toxic\", \"insult\")],
+                        as.data.frame(dfm(it_test, ngram = 1:2, tri = FALSE)))
+
+```"

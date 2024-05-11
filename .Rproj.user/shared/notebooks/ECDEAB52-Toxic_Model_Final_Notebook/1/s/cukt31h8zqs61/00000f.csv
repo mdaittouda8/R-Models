@@ -1,0 +1,27 @@
+"0","# Load required libraries"
+"0","library(ggplot2)"
+"0","library(tm)"
+"2","Loading required package: NLP
+"
+"2","
+Attaching package: ‘NLP’
+
+"
+"2","The following object is masked from ‘package:ggplot2’:
+
+    annotate
+
+"
+"0","library(SnowballC)"
+"0","library(caret)"
+"2","Loading required package: lattice
+"
+"2","Registered S3 method overwritten by 'data.table':
+  method           from
+  print.data.table     
+"
+"0","library(tokenizers)"
+"0",""
+"0","#load the data set"
+"0","dataset <- read.csv(""MachineLearningChallengeData.csv"")"
+"0",""

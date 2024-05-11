@@ -1,0 +1,12 @@
+"0","```r
+# Evaluate model performance
+toxic_pred <- predict(toxic_model, newdata = feat_tfidf_test)
+insult_pred <- predict(insult_model, newdata = feat_tfidf_test)
+
+toxic_metrics <- confusionMatrix(toxic_pred, feat_tfidf_test$toxic)
+insult_metrics <- confusionMatrix(insult_pred, feat_tfidf_test$insult)
+
+# Print model performance metrics
+print(toxic_metrics)
+print(insult_metrics)
+```"

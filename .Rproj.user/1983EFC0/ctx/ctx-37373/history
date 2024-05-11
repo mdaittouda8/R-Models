@@ -1,0 +1,512 @@
+# Create dfm with tf-idf weighting directly from tokens
+dfm_tfidf <- dfm(datatokens, tfidf = TRUE)
+# Convert dfm to a data frame
+tfidf_as_matrix <- as.matrix(dfm_tfidf)
+#get dimensions of matrix
+dim(tfidf_as_matrix)
+#View first 10 rows and columns of matrix
+View(tfidf_as_matrix[1:10, 1:10])
+# add the twi features genrated to the matrix
+#tfidf_as_matrix <- cbind(sentiment_scores$sentiment, combined_data$commentLength, tfidf_as_matrix)
+# Assuming df and df1 are your data frames and you want to extract column1 from df and column2 from df1
+column1 <- sentiment_scores$sentiment
+column2 <- combined_data$commentLength
+# Create names for the new columns
+names(column1) <- "sentiment"
+names(column2) <- "commentlength"
+# Create a new matrix with the two new columns at the beginning
+tfidf_as_matrix <- cbind(column1, column2, tfidf_as_matrix)
+#view
+View(tfidf_as_matrix[1:10, 1:10])
+#load the data set
+dataset <- read.csv("MachineLearningChallengeData.csv")
+# Create a new column 'commentlength' with the number of letters (excluding spaces) in each comment
+dataset$commentlength <- nchar(gsub("\\s", "", dataset$comment))
+#remove unnecessary columns
+dataset <- dataset[, c(2, 3, 5)]
+#change columns names
+names(dataset) <- c("comment", "toxic", "commentLength")
+#distribution of toxic and non-toxic comments
+print(table(dataset$toxic))
+# tempray data for testing
+data <- dataset
+# Remove URLs starting with "https://"
+data$comment <- gsub("https?://[^\\s]+", "", data$comment)
+# Remove URLs starting with "http://"
+data$comment <- gsub("http?://[^\\s]+", "", data$comment)
+# Remove punctuation marks
+data$comment <- gsub("[[:punct:]]", "", data$comment)
+# Remove extra white spaces (reducing multiple consecutive spaces to a single space)
+data$comment <- gsub("\\s{2,}", " ", data$comment)
+# Convert all characters in the 'comment' column to lowercase
+data$comment <- tolower(data$comment)
+# Remove names of days
+data$comment <- gsub("\\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\b", "", data$comment, ignore.case = TRUE)
+# Remove names of months
+data$comment <- gsub("\\b(january|february|march|april|may|june|july|august|september|october|november|december)\\b", "", data$comment, ignore.case = TRUE)
+# Load the tm package
+library("tm")
+# Remove English stopwords
+data$comment <- removeWords(data$comment, stopwords("en"))
+# Remove extra whitespaces (reducing multiple consecutive spaces to a single space)
+data$comment <- gsub("\\s{2,}", " ", data$comment)
+# Remove digits (numeric characters)
+data$comment <- gsub("[0-9]", "", data$comment)
+#remove words with only one letter
+data$comment <- gsub("\\b\\w{1}\\b", "", data$comment)
+# Tokenize
+library(quanteda)
+datatokens <- tokens(data$comment, what = "word",
+remove_numbers = TRUE, remove_punct = TRUE,
+remove_symbols = TRUE)
+datatokens[[1]]
+#data.tokens[[307]]
+# Perform stemming on the tokens.
+datatokens <- tokens_wordstem(datatokens, language = "english")
+datatokens[[1]]
+#data.tokens[[307]]
+# Calculate average comment length for toxic and non-toxic comments
+avg_length_toxic <- mean(data$commentLength[data$toxic == 1])
+avg_length_non_toxic <- mean(data$commentLength[data$toxic == 0])
+# Print the average lengths
+cat("Average comment length for toxic comments:", avg_length_toxic, "\n")
+cat("Average comment length for non-toxic comments:", avg_length_non_toxic, "\n")
+# Load required library
+library(ggplot2)
+# Subset data for toxic and non-toxic comments
+toxic_comments <- data$commentLength[data$toxic == 1]
+non_toxic_comments <- data$commentLength[data$toxic == 0]
+# Create histograms
+ggplot() +
+geom_histogram(aes(x = non_toxic_comments), fill = "blue", alpha = 0.5, binwidth = 10) +
+geom_histogram(aes(x = toxic_comments), fill = "red", alpha = 0.5, binwidth = 10) +
+labs(x = "Comment Length", y = "Frequency", title = "Distribution of Comment Lengths for Toxic and Non-Toxic Comments") +
+scale_x_continuous(breaks = seq(0, 1000, by = 100), limits = c(0, 800)) +  # Adjust x-axis limits
+scale_y_continuous(breaks = seq(0, 10000, by = 1000)) +
+theme_minimal()
+# Load the syuzhet library
+library(syuzhet)
+# Get NRC sentiment scores
+sentiment <- get_sentiment(data$comment, method = "nrc")
+# Convert the sentiment scores to a dataframe
+sentiment_scores <- as.data.frame(sentiment)
+# combined tem_data to setiment_scores
+combined_data <- cbind(data, sentiment_scores)
+# explore relationship between sentiment and comment toxicity
+# Calculate average comment length for toxic and non-toxic comments
+avg_sentiment_toxic <- mean(combined_data$sentiment[combined_data$toxic == 1])
+avg_sentiment_non_toxic <- mean(combined_data$sentiment[combined_data$toxic == 0])
+# Print the average lengths
+cat("Average comment sentiment for toxic comments:", avg_sentiment_toxic, "\n")
+cat("Average comment sentiment for non-toxic comments:", avg_sentiment_non_toxic, "\n")
+# Create dfm with tf-idf weighting directly from tokens
+dfm_tfidf <- dfm(datatokens, tfidf = TRUE)
+# Convert dfm to a data frame
+tfidf_as_matrix <- as.matrix(dfm_tfidf)
+#get dimensions of matrix
+dim(tfidf_as_matrix)
+#View first 10 rows and columns of matrix
+View(tfidf_as_matrix[1:10, 1:10])
+# add the features generated to the matrix
+tfidf_as_matrix <- cbind(ombined_data$commentLength, combined_data$toxic, sentiment_scores$sentiment, tfidf_as_matrix)
+# add the features generated to the matrix
+tfidf_as_matrix <- cbind(combined_data$commentLength, combined_data$toxic, sentiment_scores$sentiment, tfidf_as_matrix)
+#view
+View(tfidf_as_matrix[1:10, 1:10])
+#change columns names
+names(tfidf_as_matrix) <- c("commentLength", "toxic", "sentiment")
+#view
+View(tfidf_as_matrix[1:10, 1:10])
+#change columns names
+colnames(tfidf_as_matrix) <- c("commentLength", "toxic", "sentiment")
+#change columns names
+colnames(tfidf_as_matrix)[1:3] <- c("commentLength", "toxic", "sentiment")
+#view
+View(tfidf_as_matrix[1:10, 1:10])
+# Split the data into training and testing sets
+set.seed(123)
+trainIndex <- createDataPartition(tfidf_as_matrix$toxic, p = 0.8, list = FALSE)
+# Load required libraries
+library(caret)
+# Split the data into training and testing sets
+set.seed(123)
+trainIndex <- createDataPartition(tfidf_as_matrix$toxic, p = 0.8, list = FALSE)
+library(tibble)
+library(tibble)
+df <- as_tibble(tfidf_as_matrix)
+# Load required libraries
+library(caret)
+# Split the data into training and testing sets
+set.seed(123)
+trainIndex <- createDataPartition(combined_data$toxic, p = 0.8, list = FALSE)
+trainData <- tfidf_as_matrix[trainIndex, ]
+testData <- tfidf_as_matrix[-trainIndex, ]
+View(testData)
+#load the data set
+dataset <- read.csv("MachineLearningChallengeData.csv")
+# Create a new column 'commentlength' with the number of letters (excluding spaces) in each comment
+dataset$commentlength <- nchar(gsub("\\s", "", dataset$comment))
+#remove unnecessary columns
+dataset <- dataset[, c(2, 3, 5)]
+#change columns names
+names(dataset) <- c("comment", "toxic", "commentLength")
+#distribution of toxic and non-toxic comments
+print(table(dataset$toxic))
+# tempray data for testing
+data <- dataset
+# Remove URLs starting with "https://"
+data$comment <- gsub("https?://[^\\s]+", "", data$comment)
+# Remove URLs starting with "http://"
+data$comment <- gsub("http?://[^\\s]+", "", data$comment)
+# Remove punctuation marks
+data$comment <- gsub("[[:punct:]]", "", data$comment)
+# Remove extra white spaces (reducing multiple consecutive spaces to a single space)
+data$comment <- gsub("\\s{2,}", " ", data$comment)
+# Convert all characters in the 'comment' column to lowercase
+data$comment <- tolower(data$comment)
+# Remove names of days
+data$comment <- gsub("\\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\b", "", data$comment, ignore.case = TRUE)
+# Remove names of months
+data$comment <- gsub("\\b(january|february|march|april|may|june|july|august|september|october|november|december)\\b", "", data$comment, ignore.case = TRUE)
+# Load the tm package
+library("tm")
+# Remove English stopwords
+data$comment <- removeWords(data$comment, stopwords("en"))
+# Remove extra whitespaces (reducing multiple consecutive spaces to a single space)
+data$comment <- gsub("\\s{2,}", " ", data$comment)
+# Remove digits (numeric characters)
+data$comment <- gsub("[0-9]", "", data$comment)
+#remove words with only one letter
+data$comment <- gsub("\\b\\w{1}\\b", "", data$comment)
+# Sample text data
+text_data <- c("cats are running", "the runners are fast", "running")
+# Apply stemming using the textstem package
+stemmed_text <- stem_words(text_data)
+# Print the stemmed text
+print(stemmed_text)
+install.packages("textstem")
+library(textstem)
+# Sample text data
+text_data <- c("cats are running", "the runners are fast", "running")
+# Apply stemming using the textstem package
+stemmed_text <- stem_words(text_data)
+# Print the stemmed text
+print(stemmed_text)
+library(textstem)
+# Apply stemming using the textstem package
+data$commen t<- stem_words(data$comment)
+library(textstem)
+# Apply stemming using the textstem package
+data$comment <- stem_words(data$comment)
+View(data)
+library(textstem)
+# Apply stemming using the textstem package
+data$comment <- stem_words(data$comment)
+library(textstem)
+# Create a Corpus from the text column
+corpus <- Corpus(VectorSource(data$comment))
+library(textstem)
+# Create a Corpus from the text column
+corpus <- Corpus(VectorSource(data$comment))
+corpus[[1]]
+library(textstem)
+# Create a Corpus from the text column
+corpus <- Corpus(VectorSource(data$comment))
+print(corpus[[1]])
+install.packages("SnowballC")
+library(SnowballC)
+install.packages("SnowballC")
+install.packages("SnowballC")
+library(SnowballC)
+View(data)
+#install.packages("SnowballC")
+library(SnowballC)
+# Apply stemming using the SnowballC package
+stemmed_text <- sapply(data$comment, wordStem)
+# Replace the original text column with the stemmed text
+data$comment <- stemmed_text
+View(data)
+#load the data set
+dataset <- read.csv("MachineLearningChallengeData.csv")
+# Create a new column 'commentlength' with the number of letters (excluding spaces) in each comment
+dataset$commentlength <- nchar(gsub("\\s", "", dataset$comment))
+#remove unnecessary columns
+dataset <- dataset[, c(2, 3, 5)]
+#change columns names
+names(dataset) <- c("comment", "toxic", "commentLength")
+#distribution of toxic and non-toxic comments
+print(table(dataset$toxic))
+# tempray data for testing
+data <- dataset
+# Remove URLs starting with "https://"
+data$comment <- gsub("https?://[^\\s]+", "", data$comment)
+# Remove URLs starting with "http://"
+data$comment <- gsub("http?://[^\\s]+", "", data$comment)
+# Remove punctuation marks
+data$comment <- gsub("[[:punct:]]", "", data$comment)
+# Remove extra white spaces (reducing multiple consecutive spaces to a single space)
+data$comment <- gsub("\\s{2,}", " ", data$comment)
+# Convert all characters in the 'comment' column to lowercase
+data$comment <- tolower(data$comment)
+# Remove names of days
+data$comment <- gsub("\\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\b", "", data$comment, ignore.case = TRUE)
+# Remove names of months
+data$comment <- gsub("\\b(january|february|march|april|may|june|july|august|september|october|november|december)\\b", "", data$comment, ignore.case = TRUE)
+# Load the tm package
+library("tm")
+# Remove English stopwords
+data$comment <- removeWords(data$comment, stopwords("en"))
+# Remove extra whitespaces (reducing multiple consecutive spaces to a single space)
+data$comment <- gsub("\\s{2,}", " ", data$comment)
+# Remove digits (numeric characters)
+data$comment <- gsub("[0-9]", "", data$comment)
+#remove words with only one letter
+data$comment <- gsub("\\b\\w{1}\\b", "", data$comment)
+#install.packages("SnowballC")
+library(SnowballC)
+library(tokenizers)
+# Tokenize the text column using the tokenizers package
+tokenized_text <- tokenize_words(data$comment)
+# Stem each token using the SnowballC package
+stemmed_tokens <- lapply(tokenized_text, function(tokens) {
+wordStem(tokens, language = "en")  # "en" indicates English language
+})
+# Combine stemmed tokens back into text
+stemmed_text <- sapply(stemmed_tokens, paste, collapse = " ")
+# Replace the original text column with the stemmed text
+data$text_column <- stemmed_text
+View(data)
+#load the data set
+dataset <- read.csv("MachineLearningChallengeData.csv")
+# Create a new column 'commentlength' with the number of letters (excluding spaces) in each comment
+dataset$commentlength <- nchar(gsub("\\s", "", dataset$comment))
+#remove unnecessary columns
+dataset <- dataset[, c(2, 3, 5)]
+#change columns names
+names(dataset) <- c("comment", "toxic", "commentLength")
+#distribution of toxic and non-toxic comments
+print(table(dataset$toxic))
+# tempray data for testing
+data <- dataset
+# Remove URLs starting with "https://"
+data$comment <- gsub("https?://[^\\s]+", "", data$comment)
+# Remove URLs starting with "http://"
+data$comment <- gsub("http?://[^\\s]+", "", data$comment)
+# Remove punctuation marks
+data$comment <- gsub("[[:punct:]]", "", data$comment)
+# Remove extra white spaces (reducing multiple consecutive spaces to a single space)
+data$comment <- gsub("\\s{2,}", " ", data$comment)
+# Convert all characters in the 'comment' column to lowercase
+data$comment <- tolower(data$comment)
+# Remove names of days
+data$comment <- gsub("\\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\b", "", data$comment, ignore.case = TRUE)
+# Remove names of months
+data$comment <- gsub("\\b(january|february|march|april|may|june|july|august|september|october|november|december)\\b", "", data$comment, ignore.case = TRUE)
+# Load the tm package
+library("tm")
+# Remove English stopwords
+data$comment <- removeWords(data$comment, stopwords("en"))
+# Remove extra whitespaces (reducing multiple consecutive spaces to a single space)
+data$comment <- gsub("\\s{2,}", " ", data$comment)
+# Remove digits (numeric characters)
+data$comment <- gsub("[0-9]", "", data$comment)
+#remove words with only one letter
+data$comment <- gsub("\\b\\w{1}\\b", "", data$comment)
+#install.packages("SnowballC")
+library(SnowballC)
+library(tokenizers)
+# Tokenize the text column using the tokenizers package
+tokenized_text <- tokenize_words(data$comment)
+# Stem each token using the SnowballC package
+stemmed_tokens <- lapply(tokenized_text, function(tokens) {
+wordStem(tokens, language = "en")  # "en" indicates English language
+})
+# Combine stemmed tokens back into text
+stemmed_text <- sapply(stemmed_tokens, paste, collapse = " ")
+# Replace the original text column with the stemmed text
+data$comment <- stemmed_text
+View(data)
+View(data)
+# Calculate average comment length for toxic and non-toxic comments
+avg_length_toxic <- mean(data$commentLength[data$toxic == 1])
+avg_length_non_toxic <- mean(data$commentLength[data$toxic == 0])
+# Print the average lengths
+cat("Average comment length for toxic comments:", avg_length_toxic, "\n")
+cat("Average comment length for non-toxic comments:", avg_length_non_toxic, "\n")
+# Load required library
+library(ggplot2)
+# Subset data for toxic and non-toxic comments
+toxic_comments <- data$commentLength[data$toxic == 1]
+non_toxic_comments <- data$commentLength[data$toxic == 0]
+# Create histograms
+ggplot() +
+geom_histogram(aes(x = non_toxic_comments), fill = "blue", alpha = 0.5, binwidth = 10) +
+geom_histogram(aes(x = toxic_comments), fill = "red", alpha = 0.5, binwidth = 10) +
+labs(x = "Comment Length", y = "Frequency", title = "Distribution of Comment Lengths for Toxic and Non-Toxic Comments") +
+scale_x_continuous(breaks = seq(0, 1000, by = 100), limits = c(0, 800)) +  # Adjust x-axis limits
+scale_y_continuous(breaks = seq(0, 10000, by = 1000)) +
+theme_minimal()
+# Load the syuzhet library
+library(syuzhet)
+# Get NRC sentiment scores
+sentiment <- get_sentiment(data$comment, method = "nrc")
+# Convert the sentiment scores to a dataframe
+sentiment_scores <- as.data.frame(sentiment)
+# combined data to setiment_scores
+combined_data <- cbind(data, sentiment_scores)
+# explore relationship between sentiment and comment toxicity
+# Calculate average comment length for toxic and non-toxic comments
+avg_sentiment_toxic <- mean(combined_data$sentiment[combined_data$toxic == 1])
+avg_sentiment_non_toxic <- mean(combined_data$sentiment[combined_data$toxic == 0])
+# Print the average lengths
+cat("Average comment sentiment for toxic comments:", avg_sentiment_toxic, "\n")
+cat("Average comment sentiment for non-toxic comments:", avg_sentiment_non_toxic, "\n")
+View(combined_data)
+# Create dfm with tf-idf weighting directly from tokens
+#dfm_tfidf <- dfm(datatokens, tfidf = TRUE)
+dfm_tfidf <- dfm(combined_data$comment, weighting = "tfidf")
+?dfm
+??dfm
+#load the data set
+dataset <- read.csv("MachineLearningChallengeData.csv")
+dataset$commentlength <- nchar(gsub("\\s", "", dataset$comment))
+#remove unnecessary columns
+dataset <- dataset[, c(2, 3, 5)]
+#change columns names
+names(dataset) <- c("comment", "toxic", "commentLength")
+#distribution of toxic and non-toxic comments
+print(table(dataset$toxic))
+# tempray data for testing
+data <- dataset
+train_index <- createDataPartition(data$toxic, p = 0.8, list = FALSE)
+library(tm)
+library(SnowballC)
+library(caret)
+train_index <- createDataPartition(data$toxic, p = 0.8, list = FALSE)
+train_data <- data[train_index, ]
+test_data <- data[-train_index, ]
+# Create a document-term matrix (DTM) using TF-IDF
+tfidf_vectorizer <- function(data) {
+corpus <- Corpus(VectorSource(data))
+dtm <- DocumentTermMatrix(corpus, control = list(tokenize = wordTokenizer))
+dtm_tfidf <- weightTfIdf(dtm)
+return(as.matrix(dtm_tfidf))
+}
+# Apply TF-IDF vectorizer on training and testing data
+X_train <- tfidf_vectorizer(train_data$comment)
+# Create a document-term matrix (DTM) using TF-IDF
+tfidf_vectorizer <- function(data) {
+corpus <- Corpus(VectorSource(data))
+dtm <- DocumentTermMatrix(corpus)
+dtm_tfidf <- weightTfIdf(dtm)
+return(as.matrix(dtm_tfidf))
+}
+# Apply TF-IDF vectorizer on training and testing data
+X_train <- tfidf_vectorizer(train_data$comment)
+X_test <- tfidf_vectorizer(test_data$comment)
+# Define labels
+y_train <- train_data$toxic
+y_test <- test_data$toxic
+# Train logistic regression model
+model <- glm(label ~ ., data = cbind(y_train, X_train), family = binomial(link = "logit"))
+# Combine label and TF-IDF matrix into a data frame
+train_df <- data.frame(label = y_train, X_train)
+test_df <- data.frame(label = y_test, X_test)
+# Train logistic regression model
+model <- glm(label ~ ., data = train_df, family = binomial(link = "logit"))
+library(tm)
+library(SnowballC)
+library(caret)
+#load the data set
+dataset <- read.csv("MachineLearningChallengeData.csv")
+dataset$commentlength <- nchar(gsub("\\s", "", dataset$comment))
+#remove unnecessary columns
+dataset <- dataset[, c(2, 3, 5)]
+#change columns names
+names(dataset) <- c("comment", "toxic", "commentLength")
+#distribution of toxic and non-toxic comments
+print(table(dataset$toxic))
+# tempray data for testing
+data <- dataset
+# Split the data into training and testing sets
+set.seed(42)  # for reproducibility
+train_index <- createDataPartition(data$toxic, p = 0.8, list = FALSE)
+train_data <- data[train_index, ]
+test_data <- data[-train_index, ]
+# Create a document-term matrix (DTM) using TF-IDF
+tfidf_vectorizer <- function(data) {
+corpus <- Corpus(VectorSource(data))
+dtm <- DocumentTermMatrix(corpus)
+dtm_tfidf <- weightTfIdf(dtm)
+# Reduce the size of the TF-IDF matrix by keeping only the top 1000 features
+dtm_tfidf_reduced <- removeSparseTerms(dtm_tfidf, sparse = 0.999)
+return(as.matrix(dtm_tfidf_reduced))
+}
+# Apply TF-IDF vectorizer on training and testing data
+X_train <- tfidf_vectorizer(train_data$comment)
+library(tm)
+library(SnowballC)
+library(caret)
+#load the data set
+dataset <- read.csv("MachineLearningChallengeData.csv")
+dataset$commentlength <- nchar(gsub("\\s", "", dataset$comment))
+#remove unnecessary columns
+dataset <- dataset[, c(2, 3, 5)]
+#change columns names
+names(dataset) <- c("comment", "toxic", "commentLength")
+#distribution of toxic and non-toxic comments
+print(table(dataset$toxic))
+# tempray data for testing
+data <- dataset
+View(data)
+library(tm)
+library(SnowballC)
+library(caret)
+#load the data set
+dataset <- read.csv("MachineLearningChallengeData.csv")
+dataset$commentlength <- nchar(gsub("\\s", "", dataset$comment))
+#remove unnecessary columns
+dataset <- dataset[, c(2, 3, 5)]
+#change columns names
+names(dataset) <- c("comment", "toxic", "commentLength")
+#distribution of toxic and non-toxic comments
+print(table(dataset$toxic))
+# tempray data for testing
+data <- dataset
+# Remove URLs starting with "https://"
+data$comment <- gsub("https?://[^\\s]+", "", data$comment)
+# Remove URLs starting with "http://"
+data$comment <- gsub("http?://[^\\s]+", "", data$comment)
+# Remove punctuation marks
+data$comment <- gsub("[[:punct:]]", "", data$comment)
+# Remove extra white spaces (reducing multiple consecutive spaces to a single space)
+data$comment <- gsub("\\s{2,}", " ", data$comment)
+# Convert all characters in the 'comment' column to lowercase
+data$comment <- tolower(data$comment)
+# Remove names of days
+data$comment <- gsub("\\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\b", "", data$comment, ignore.case = TRUE)
+# Remove names of months
+data$comment <- gsub("\\b(january|february|march|april|may|june|july|august|september|october|november|december)\\b", "", data$comment, ignore.case = TRUE)
+# Remove English stopwords
+data$comment <- removeWords(data$comment, stopwords("en"))
+# Remove extra whitespaces (reducing multiple consecutive spaces to a single space)
+data$comment <- gsub("\\s{2,}", " ", data$comment)
+# Remove digits (numeric characters)
+data$comment <- gsub("[0-9]", "", data$comment)
+#remove words with only one letter
+data$comment <- gsub("\\b\\w{1}\\b", "", data$comment)
+install.packages("tokenizers")
+install.packages("SnowballC")
+library(SnowballC)
+library(tokenizers)
+# Tokenize the text column using the tokenizers package
+tokenized_text <- tokenize_words(data$comment)
+# Stem each token using the SnowballC package
+stemmed_tokens <- lapply(tokenized_text, function(tokens) {
+wordStem(tokens, language = "en")  # "en" indicates English language
+})
+# Combine stemmed tokens back into text
+stemmed_text <- sapply(stemmed_tokens, paste, collapse = " ")
+# Replace the original text column with the stemmed text
+data$comment <- stemmed_text
+install.packages("tokenizers")

@@ -1,0 +1,11 @@
+"0","```r
+# Feature engineering
+it_train <- tokens(trainData$comment, what = \"word\", 
+                       remove_numbers = TRUE, remove_punct = TRUE,
+                       remove_symbols = TRUE)
+it_test <- tokens(testData$comment, what = \"word\", 
+                       remove_numbers = TRUE, remove_punct = TRUE,
+                       remove_symbols = TRUE)
+
+
+```"

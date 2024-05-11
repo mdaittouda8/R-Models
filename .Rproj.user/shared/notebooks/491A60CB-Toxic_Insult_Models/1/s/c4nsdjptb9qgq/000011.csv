@@ -1,0 +1,13 @@
+"0","library(ggplot2)
+library(tm)
+library(SnowballC)
+library(caret)
+"
+"2","Loading required package: lattice
+"
+"2","Registered S3 method overwritten by 'data.table':
+  method           from
+  print.data.table     
+"
+"0","library(tokenizers)"
+"0",""

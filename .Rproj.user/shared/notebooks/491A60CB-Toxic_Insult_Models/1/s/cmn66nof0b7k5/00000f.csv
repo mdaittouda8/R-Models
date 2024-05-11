@@ -1,0 +1,6 @@
+"0","# Split the data into training and testing sets"
+"0","set.seed(42)  # for reproducibility"
+"0","train_index2 <- createDataPartition(combined_data2$label, p = 0.8, list = FALSE)"
+"0","train_data2 <- combined_data2[train_index2, ]"
+"0","test_data2 <- combined_data2[-train_index2, ]"
+"0",""

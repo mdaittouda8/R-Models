@@ -1,0 +1,6 @@
+"0","#load the data set"
+"0","dataset <- read.csv(""MachineLearningChallengeData.csv"")"
+"0",""
+"0","# Create a new column 'commentlength' with the number of letters (excluding spaces) in each comment"
+"0","dataset$commentlength <- nchar(gsub(""\\s"", """", dataset$comment))"
+"0",""

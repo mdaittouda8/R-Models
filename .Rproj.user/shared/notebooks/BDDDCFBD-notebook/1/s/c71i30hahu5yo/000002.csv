@@ -1,0 +1,8 @@
+"0","```r
+# TF-IDF
+feat_tfidf <- cbind(trainData[, c(\"toxic\", \"insult\")],
+                    as.data.frame(dfm(it_train, ngram = 1, tri = FALSE, weighting = \"tfidf\")))
+feat_tfidf_test <- cbind(testData[, c(\"toxic\", \"insult\")],
+                         as.data.frame(dfm(it_test, ngram = 1, tri = FALSE, weighting = \"tfidf\")))
+
+```"

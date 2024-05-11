@@ -1,0 +1,8 @@
+"0","# Apply TF-IDF vectorizer on data"
+"0","tfidf_data <- tfidf_vectorizer(data$comment)"
+"2","Warning: empty document(s): 184 1238 2918 2936 3430 3569 4733 6635 7891"
+"0","# Define labels"
+"0","target <- data$toxic"
+"0",""
+"0","# Combine label and TF-IDF matrix into a data frame"
+"0","combined_data <- data.frame(label = target, tfidf_data)"

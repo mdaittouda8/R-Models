@@ -1,0 +1,9 @@
+"0","```r
+# Character n-grams
+numChar <- 4
+feat_char <- cbind(trainData[, c(\"toxic\", \"insult\")],
+                   as.data.frame(dfm(it_train, ngram = numChar, tri = FALSE)))
+feat_char_test <- cbind(testData[, c(\"toxic\", \"insult\")],
+                        as.data.frame(dfm(it_test, ngram = numChar, tri = FALSE)))
+
+```"

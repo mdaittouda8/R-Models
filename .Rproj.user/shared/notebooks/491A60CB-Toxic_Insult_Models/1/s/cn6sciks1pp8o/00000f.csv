@@ -1,0 +1,8 @@
+"0","# Load the syuzhet library"
+"0","library(syuzhet)"
+"0",""
+"0","# Get NRC sentiment scores"
+"0","sentiment <- get_sentiment(data$comment, method = ""nrc"")"
+"0",""
+"0","# Convert the sentiment scores to a dataframe"
+"0","sentiment_scores <- as.data.frame(sentiment)"
